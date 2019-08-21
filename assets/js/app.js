@@ -167,6 +167,8 @@ function removeButton() {
 
 function searchGiphyByButton() {
     const value = $(this).attr('data-name');
+    $('.btn').parent().removeClass('active');
+    $(this).parent().addClass('active');
 
     uncheckFavorite();
     fetchGiphy(value);
@@ -177,7 +179,7 @@ function clearResult(event) {
 
     uncheckFavorite();
     $('.giphy-content').empty();
-    $('.giphy-content').append('<p>Search cleared!!</p>');
+    $('.giphy-content').append('<p id="clear-message">Search cleared!!</p>');
 }
 
 function searchGiphy(event) {
