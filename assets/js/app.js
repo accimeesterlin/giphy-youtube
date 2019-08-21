@@ -7,13 +7,18 @@ let favorites = [];
 let isFavoriteOnly = false;
 let currentSearch = [];
 
-
+// load buttons from localStorage
 function loadButtons() {
-    const data = JSON.parse(localStorage.getItem('buttons'));
+    const listButtons = JSON.parse(localStorage.getItem('buttons'));
 
-    if (data && data.length > 0) {
-        buttons = data;
+    if (listButtons && listButtons.length > 0) {
+        buttons = listButtons;
     }
+}
+
+// Save to localStorage
+function saveButtonsToLocalStorage(buttons) {
+    localStorage.setItem('buttons', JSON.stringify(buttons));
 }
 
 // Render buttons
@@ -21,43 +26,43 @@ function renderButtons() {
     $('.recent-search').empty();
 
     for (let i = 0; i < buttons.length; i++) {
-        const button = `
-            <div class="buttons">
+        const buttonName = buttons[i];
+
+        const button = `<div class="buttons">
                 <button
-                    data-name="${buttons[i]}"
+                    data-name="${buttonName}"
                     class="btn btn-search"
                 >
-                ${buttons[i]}
+                ${buttonName}
                 </button>
-                <button data-name="${buttons[i]}" class="btn btn-close fas fa-times"></button>
-            </div>
-        `;
+                <button
+                    data-name="${buttonName}"
+                    class="btn btn-close fas fa-times">
+                </button>
+        </div>`;
 
         $('.recent-search').append(button);
     }
 
-    // Save to localStorage
-    localStorage.setItem('buttons', JSON.stringify(buttons));
+    saveButtonsToLocalStorage(buttons);
 }
 
+// Create giphy section mock up
 function createGiphyTemplate(giphy) {
     const images = giphy.images;
-
     const starredIndex = favorites.indexOf(giphy.id);
-
     const isStar = starredIndex === -1;
 
-    return `
-        <div class="giphy">
-            <i class="${!isStar ? 'fas' : 'far'} fa-star favorite" data-id="${giphy.id}" data-star="${isStar ? 'false' : 'true'}"></i>
+    return `<div class="giphy">
+            <i class="${!isStar ? 'fas' : 'far'} fa-star favorite"
+                data-id="${giphy.id}" data-star="${isStar ? 'false' : 'true'}">
+            </i>
             <div class="giphy-image">
                 <img
                     src="${images.original_still.url}"
                     data-still="${images.original_still.url}"
                     data-animate="${images.original.url}"
                     data-state="still"
-                    width="${images.original.width}px"
-                    height="${images.original.height}px"
                 />
                 <i class="fa fa-play img-play"></i>
             </div>
@@ -69,16 +74,12 @@ function createGiphyTemplate(giphy) {
             <div class="giphy-footer" data-link="${giphy.embed_url}"> 
                 <p>Copy Link <i class="fa fa-link"></i></p>
             </div>
-        </div>
-    `;
+    </div>`;
 }
 
 // Render Giphys
-function renderGiphy(giphys, isEmpty = true) {
-
-    if (isEmpty) {
-        $('.giphy-content').empty();
-    }
+function renderGiphy(giphys) {
+    $('.giphy-content').empty();
 
     for (let i = 0; i < giphys.length; i++) {
         const giphy = giphys[i];
@@ -86,34 +87,100 @@ function renderGiphy(giphys, isEmpty = true) {
 
         $('.giphy-content').append(giphyTemplate);
     }
-
 }
 
 // Fetch Giphys
 function fetchGiphy(value) {
     const url = endpoint + '&q=' + value;
 
-    $.ajax({
-            url,
-        })
+    $.ajax({ url })
         .then((response) => {
             renderGiphy(response.data);
             currentSearch = response.data;
         })
         .catch((error) => {
+            // TODO:
+            // Handle errors
             console.log('Error: ', error);
         });
 }
 
+function randomValue(values) {
+    const index = Math.floor(Math.random() * values.length);
+    const value = values[index];
+    return value;
+}
 
-function uncheckFavorite() {
-    $('#favorite-only').prop('checked', false);
+// Once image clicked
+function imgCardClick() {
+    const giphyCard = $(this);
+
+    const image = giphyCard.find('img');
+    const iconPlay = giphyCard.find('i');
+    
+    const still = image.attr('data-still');
+    const animate = image.attr('data-animate');
+    const state = image.attr('data-state');
+
+    if (state === 'still') {
+        image.attr({
+            'src': animate,
+            'data-state': 'animate'
+        });
+
+        iconPlay.removeClass('img-play');
+    } else {
+        iconPlay.addClass('img-play');
+        image.attr({
+            'src': still,
+            'data-state': 'still'
+        });
+    }
 }
 
 
+function copyLink() {
+    const url = $(this).attr('data-link');
 
-// Search giphys on search
-$('#submit-button').on('click', (event) => {
+    // TODO:
+    // Find out how we can get execCommand working on attributes
+    const temp = $("<input>");
+    $('body').append(temp);
+    temp.val(url).select();
+    document.execCommand("copy");
+    temp.remove();
+
+    $(this).html('Copied!!!');
+
+    setTimeout(() => $(this).html(`
+        <p>Copy Link <i class="fa fa-link"></i></p>
+    `), 3000);
+}
+
+function removeButton() {
+    const text = $(this).attr('data-name');
+
+    const newButtons = filterByValue(buttons, text);
+    buttons = newButtons;
+    renderButtons();
+}
+
+function searchGiphyByButton() {
+    const value = $(this).attr('data-name');
+
+    uncheckFavorite();
+    fetchGiphy(value);
+}
+
+function clearResult(event) {
+    event.preventDefault();
+
+    uncheckFavorite();
+    $('.giphy-content').empty();
+    $('.giphy-content').append('<p>Search cleared!!</p>');
+}
+
+function searchGiphy(event) {
     event.preventDefault();
     const value = $('#search').val();
 
@@ -123,10 +190,9 @@ $('#submit-button').on('click', (event) => {
     renderButtons(value);
 
     $('#search').val('');
-});
+}
 
-
-$('#search').on('keyup', function() {
+function disableSearchButton() {
     const value = $(this).val();
 
     if (value) {
@@ -134,28 +200,71 @@ $('#search').on('keyup', function() {
     } else {
         $('#submit-button').prop('disabled', true);
     }
-});
-
-// Fetch giphys on click
-$(document).on('click', '.btn-search', function () {
-    const value = $(this).attr('data-name');
-
-    uncheckFavorite();
-    fetchGiphy(value);
-});
-
-
-function searchFavoriteGiphy(url) {
-
 }
 
+
+
+/*
+    ###############################################
+    ################### PART 2 ####################
+    ###############################################
+*/
+function uncheckFavorite() {
+    $('#favorite-only').prop('checked', false);
+}
+
+// Render favorite giphys
 function renderFavoriteGiphy(giphy) {
     const giphyTemplate = createGiphyTemplate(giphy);
 
     $('.giphy-content').append(giphyTemplate);;
 }
 
-$('#favorite-only').on('click', function() {
+function addToFavorite(id) {
+    favorites.push(id);
+    setFavorite();
+}
+
+// favorite to localStorage
+function setFavorite() {
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+}
+
+function removeFavorite(id) {
+    favorites = filterByValue(favorites, id);
+    setFavorite();
+}
+
+function filterByValue(list, value) {
+    const arr = list.filter((el) => el !== value);
+    return arr;
+}
+
+// Load favorites from localStorage
+function loadFavorites() {
+    const stars = JSON.parse(localStorage.getItem('favorites'));
+
+    if (Array.isArray(stars)) {
+        favorites = stars
+    }
+}
+
+function addOrRemoveFavorite() {
+    const startState = $(this).attr('data-star');
+    const id = $(this).attr('data-id');
+
+    if (startState === 'false') {
+        addToFavorite(id);
+        $(this).removeClass('far').addClass('fas');
+        $(this).attr('data-star', 'true');
+    } else {
+        removeFavorite(id);
+        $(this).removeClass('fas').addClass('far');
+        $(this).attr('data-star', 'false');
+    }
+}
+
+function searchFavorites() {
     isFavoriteOnly = $(this).is(':checked');
 
     if (isFavoriteOnly) {
@@ -173,132 +282,31 @@ $('#favorite-only').on('click', function() {
     } else {
         renderGiphy(currentSearch);
     }
-});;
-
-// Animate Images
-$(document).on('click', '.giphy-image', function () {
-    const giphyCard = $(this);
-
-    const image = giphyCard.find('img');
-    const iconPlay = giphyCard.find('i');
-    
-    const still = image.attr('data-still');
-    const animate = image.attr('data-animate');
-    const state = image.attr('data-state');
-
-    if (state === 'still') {
-        image.attr({
-            'src': animate,
-            'data-state': 'animate'
-        });
-
-        iconPlay.removeClass('img-play');
-
-    } else {
-        iconPlay.addClass('img-play');
-        image.attr({
-            'src': still,
-            'data-state': 'still'
-        });
-    }
-});
-
-
-$(document).on('click', '.giphy-footer', function () {
-    const url = $(this).attr('data-link');
-
-    // TODO:
-    // Find out how we can get execCommand working on attributes
-    const temp = $("<input>");
-    $('body').append(temp);
-    temp.val(url).select();
-    document.execCommand("copy");
-    temp.remove();
-
-    $(this).html('Copied!!!');
-
-    setTimeout(() => $(this).html(`
-        <p>Copy Link <i class="fa fa-link"></i></p>
-    `), 3000);
-});
-
-
-function addToFavorite(id) {
-    favorites.push(id);
-    setFavorite();
 }
 
-function setFavorite() {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-}
-function removeFavorite(id) {
-    favorites = filterByValue(favorites, id);
-    setFavorite();
-}
-function filterByValue(list, value) {
-    const arr = list.filter((el) => el !== value);
 
-    return arr;
-}
-
-function loadFavorites() {
-    const stars = JSON.parse(localStorage.getItem('favorites'));
-
-    if (Array.isArray(stars)) {
-        favorites = stars
-    }
-}
-
-loadFavorites();
-
-$(document).on('click', '.favorite', function() {
-    const startState = $(this).attr('data-star');
-    const id = $(this).attr('data-id');
-
-    if (startState === 'false') {
-        addToFavorite(id);
-        $(this).removeClass('far').addClass('fas');
-        $(this).attr('data-star', 'true');
-    } else {
-        removeFavorite(id);
-        $(this).removeClass('fas').addClass('far');
-        $(this).attr('data-star', 'false');
-    }
-});
-
-$(document).on('click', '.btn-close', function() {
-    const text = $(this).attr('data-name');
-
-    const newButtons = filterByValue(buttons, text);
-    buttons = newButtons;
-    renderButtons();
-});
+$(document).on('click', '.giphy-image', imgCardClick);
+$(document).on('click', '.giphy-footer', copyLink);
+$(document).on('click', '.btn-close', removeButton);
+$(document).on('click', '.btn-search', searchGiphyByButton);
+$(document).on('click', '.favorite', addOrRemoveFavorite);
 
 
-$('#clear-results').on('click', function(event) {
-    event.preventDefault();
+$('#favorite-only').on('click', searchFavorites);
+$('#clear-results').on('click', clearResult);
+$('#submit-button').on('click', searchGiphy);
+$('#search').on('keyup', disableSearchButton);
 
-    uncheckFavorite();
-    $('.giphy-content').empty();
-    $('.giphy-content').append('<p>Search cleared!!</p>');
-});
 
-function randomValue(values) {
-    const index = Math.floor(Math.random() * values.length);
-    const value = values[index];
-    return value;
-}
 
 function initApp() {
     const value = randomValue(giphys);
 
+    loadFavorites();
     loadButtons();
     renderButtons();
     fetchGiphy(value);
 }
-
-
-
 
 // Initialize the APP
 initApp();
