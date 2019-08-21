@@ -10,31 +10,48 @@
       integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
       crossorigin="anonymous"
     />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.min.css"
+    />
     <link rel="stylesheet" href="./assets/css/style.css" />
     <title>Giphy App</title>
   </head>
   <body>
     <div class="container">
-      <!-- Add the recent buttons here -->
-      <div class="recent-search"></div>
-
+      <h1>Giphy App</h1>
       <div class="form">
         <form>
-          <div class="form-group">
-            <input
-              type="text"
-              class="form-control"
-              id="search"
-              placeholder="Search giphy.."
-            />
-          </div>
+          <input
+            type="text"
+            class="form-control"
+            id="search"
+            placeholder="Search giphy.."
+          />
 
-          <button type="submit" id ="submit-button" class="btn btn-primary">Submit</button>
+          <button disabled type="submit" id="submit-button" class="btn btn-primary">
+            Search
+          </button>
+
+
+          <button class="btn btn-primary" id="clear-results">
+            Clear Results
+          </button>
         </form>
       </div>
 
+      
+      <!-- Add the recent buttons here -->
+      <div class="recent-search"></div>
+      
+      <div class="form-group form-check">
+        <input type="checkbox" class="form-check-input" id="favorite-only">
+        <label class="form-check-label" for="favorite-only">Favorites only</label>
+      </div>
+
       <!-- Dump all the Giphys here -->
-      <div class="row giphy-content"></div>
+      <div class="giphy-content"></div>
     </div>
 
     <script
